@@ -1,24 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TextInput, Button, FlatList, TouchableOpacity, Switch } from 'react-native';
+import { database } from './firebase';
+import { ref, onValue, push, update, remove, set } from 'firebase/database';
 
 export default function App() {
   const [tasks, setTasks] = useState([]);
   const [title, setTitle] = useState('');
   const [isButtonDisabled, setIsButtonDisabled] = useState(true);
 
+  useEffect(() => {
+    const tasksRef = ref(database, 'tasks');
+    onValue(tasksRef, (snapshot) => {
+      const data = snapshot.val();
+      const loadedTasks = [];
+      for (const key in data) {
+        loadedTasks.push({ id: key, ...data[key] });
+      }
+      setTasks(loadedTasks);
+    });
+  }, []);
+
   const addTask = () => {
     if (title.trim().length === 0) return;
-    setTasks([...tasks, { id: Date.now().toString(), title, status: false }]);
+    const newTaskRef = push(ref(database, 'tasks'));
+    set(newTaskRef, {
+      title,
+      status: false
+    });
     setTitle('');
     setIsButtonDisabled(true);
   };
 
   const toggleTaskStatus = (id) => {
-    setTasks(tasks.map(task => task.id === id ? { ...task, status: !task.status } : task));
+    const taskRef = ref(database, `tasks/${id}`);
+    update(taskRef, { status: !tasks.find(task => task.id === id).status });
   };
 
   const deleteTask = (id) => {
-    setTasks(tasks.filter(task => task.id !== id));
+    const taskRef = ref(database, `tasks/${id}`);
+    remove(taskRef);
   };
 
   const handleTitleChange = (text) => {
